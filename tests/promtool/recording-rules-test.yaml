@@ -1,0 +1,45 @@
+rule_files:
+  - raw-rules.yaml
+
+evaluation_interval: 1m
+
+tests:
+  - interval: 1m
+    input_series:
+      - series: 'http_requests_total{job="checkout-service",service="checkout",namespace="tenant-checkout",tenant="checkout",status="200"}'
+        values: '0+6000x20' # 100 rps
+      - series: 'http_requests_total{job="checkout-service",service="checkout",namespace="tenant-checkout",tenant="checkout",status="500"}'
+        values: '0+600x20'  # 10 rps (10/110 = 9.09% errors)
+      - series: 'http_requests_total{job="inventory-service",service="inventory",namespace="tenant-inventory",tenant="inventory",status="200"}'
+        values: '0+3000x20' # 50 rps
+      - series: 'http_requests_total{job="inventory-service",service="inventory",namespace="tenant-inventory",tenant="inventory",status="500"}'
+        values: '0+0x20'    # 0 rps (0% errors)
+
+    promql_expr_test:
+      # Verify checkout request rate preserves dimensions
+      - expr: tenant_job:http_requests:rate5m{tenant="checkout"}
+        eval_time: 10m
+        exp_samples:
+          - labels: 'tenant_job:http_requests:rate5m{tenant="checkout",namespace="tenant-checkout",service="checkout",job="checkout-service"}'
+            value: 110
+
+      # Verify checkout error rate preserves dimensions
+      - expr: tenant_job:http_requests_errors:rate5m{tenant="checkout"}
+        eval_time: 10m
+        exp_samples:
+          - labels: 'tenant_job:http_requests_errors:rate5m{tenant="checkout",namespace="tenant-checkout",service="checkout",job="checkout-service"}'
+            value: 10
+
+      # Verify inventory request rate preserves tenant isolation
+      - expr: tenant_job:http_requests:rate5m{tenant="inventory"}
+        eval_time: 10m
+        exp_samples:
+          - labels: 'tenant_job:http_requests:rate5m{tenant="inventory",namespace="tenant-inventory",service="inventory",job="inventory-service"}'
+            value: 50
+
+      # Verify inventory error rate is zero
+      - expr: tenant_job:http_requests_errors:rate5m{tenant="inventory"}
+        eval_time: 10m
+        exp_samples:
+          - labels: 'tenant_job:http_requests_errors:rate5m{tenant="inventory",namespace="tenant-inventory",service="inventory",job="inventory-service"}'
+            value: 0

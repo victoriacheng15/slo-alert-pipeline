@@ -1,0 +1,43 @@
+rule_files:
+  - raw-rules.yaml
+
+evaluation_interval: 30s
+
+tests:
+  - interval: 30s
+    input_series:
+      # Minutes 0 to 5: Clean baseline (0% errors)
+      # Minutes 5 to 20: 10% error rate (Fast Burn threshold is 7.2%, so this triggers Fast Burn)
+      - series: 'http_requests_total{job="checkout-service",service="checkout",namespace="tenant-checkout",tenant="checkout",status="200"}'
+        values: '0+3000x10 30000+2700x30'
+      - series: 'http_requests_total{job="checkout-service",service="checkout",namespace="tenant-checkout",tenant="checkout",status="500"}'
+        values: '0+0x10 0+300x30'
+
+      # Inventory tenant remains 100% healthy
+      - series: 'http_requests_total{job="inventory-service",service="inventory",namespace="tenant-inventory",tenant="inventory",status="200"}'
+        values: '0+1500x40'
+
+    alert_rule_test:
+      # At minute 4 (during baseline): No alerts firing
+      - eval_time: 4m
+        alertname: SLOErrorBudgetFastBurnLocal
+        exp_alerts: []
+
+      # At minute 18 (after 13 minutes of 10% error rate): 15m window reaches 8.6% (> 7.2% threshold)
+      - eval_time: 18m
+        alertname: SLOErrorBudgetFastBurnLocal
+        exp_alerts:
+          - exp_labels:
+              alertname: SLOErrorBudgetFastBurnLocal
+              severity: page
+              tier: critical
+              slo_type: availability
+              profile: local-drill
+              tenant: checkout
+              namespace: tenant-checkout
+              service: checkout
+              job: checkout-service
+            exp_annotations:
+              summary: "Local Drill: Fast burn detected on tenant checkout"
+              description: "Tenant checkout is consuming budget at >14.4x rate across compressed 2m/15m drill windows."
+              runbook_url: "docs/runbooks/runbook-error-budget-fast-burn.md"

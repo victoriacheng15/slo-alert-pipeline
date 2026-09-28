@@ -1,0 +1,100 @@
+groups:
+  - name: slo-recording-rules
+    interval: 10s
+    rules:
+      - record: tenant_job:http_requests:rate2m
+        expr: sum by (tenant, namespace, service, job) (rate(http_requests_total[2m]))
+
+      - record: tenant_job:http_requests:rate5m
+        expr: sum by (tenant, namespace, service, job) (rate(http_requests_total[5m]))
+
+      - record: tenant_job:http_requests:rate15m
+        expr: sum by (tenant, namespace, service, job) (rate(http_requests_total[15m]))
+
+      - record: tenant_job:http_requests:rate30m
+        expr: sum by (tenant, namespace, service, job) (rate(http_requests_total[30m]))
+
+      - record: tenant_job:http_requests:rate1h
+        expr: sum by (tenant, namespace, service, job) (rate(http_requests_total[1h]))
+
+      - record: tenant_job:http_requests:rate6h
+        expr: sum by (tenant, namespace, service, job) (rate(http_requests_total[6h]))
+
+      - record: tenant_job:http_requests_errors:rate2m
+        expr: sum by (tenant, namespace, service, job) (rate(http_requests_total{status=~"5.."}[2m]))
+
+      - record: tenant_job:http_requests_errors:rate5m
+        expr: sum by (tenant, namespace, service, job) (rate(http_requests_total{status=~"5.."}[5m]))
+
+      - record: tenant_job:http_requests_errors:rate15m
+        expr: sum by (tenant, namespace, service, job) (rate(http_requests_total{status=~"5.."}[15m]))
+
+      - record: tenant_job:http_requests_errors:rate30m
+        expr: sum by (tenant, namespace, service, job) (rate(http_requests_total{status=~"5.."}[30m]))
+
+      - record: tenant_job:http_requests_errors:rate1h
+        expr: sum by (tenant, namespace, service, job) (rate(http_requests_total{status=~"5.."}[1h]))
+
+      - record: tenant_job:http_requests_errors:rate6h
+        expr: sum by (tenant, namespace, service, job) (rate(http_requests_total{status=~"5.."}[6h]))
+
+  - name: slo-burn-rates
+    interval: 10s
+    rules:
+      - alert: SLOErrorBudgetFastBurn
+        expr: |
+          (
+            tenant_job:http_requests_errors:rate5m / tenant_job:http_requests:rate5m > (14.4 * 0.005)
+          )
+          and
+          (
+            tenant_job:http_requests_errors:rate1h / tenant_job:http_requests:rate1h > (14.4 * 0.005)
+          )
+        for: 1m
+        labels:
+          severity: page
+          tier: critical
+          slo_type: availability
+        annotations:
+          summary: "Critical error budget fast burn detected on tenant {{ $labels.tenant }}"
+          description: "Tenant {{ $labels.tenant }} (service {{ $labels.service }}) is burning error budget at rate > 14.4x."
+          runbook_url: "docs/runbooks/runbook-error-budget-fast-burn.md"
+
+      - alert: SLOErrorBudgetSlowBurn
+        expr: |
+          (
+            tenant_job:http_requests_errors:rate30m / tenant_job:http_requests:rate30m > (6 * 0.005)
+          )
+          and
+          (
+            tenant_job:http_requests_errors:rate6h / tenant_job:http_requests:rate6h > (6 * 0.005)
+          )
+        for: 5m
+        labels:
+          severity: ticket
+          tier: warning
+          slo_type: availability
+        annotations:
+          summary: "Warning: Sustained error budget slow burn detected on tenant {{ $labels.tenant }}"
+          description: "Tenant {{ $labels.tenant }} (service {{ $labels.service }}) is burning error budget at rate > 6x."
+          runbook_url: "docs/runbooks/runbook-error-budget-slow-burn.md"
+
+      - alert: SLOErrorBudgetFastBurnLocal
+        expr: |
+          (
+            tenant_job:http_requests_errors:rate2m / tenant_job:http_requests:rate2m > (14.4 * 0.005)
+          )
+          and
+          (
+            tenant_job:http_requests_errors:rate15m / tenant_job:http_requests:rate15m > (14.4 * 0.005)
+          )
+        for: 30s
+        labels:
+          severity: page
+          tier: critical
+          slo_type: availability
+          profile: local-drill
+        annotations:
+          summary: "Local Drill: Fast burn detected on tenant {{ $labels.tenant }}"
+          description: "Tenant {{ $labels.tenant }} is consuming budget at >14.4x rate across compressed 2m/15m drill windows."
+          runbook_url: "docs/runbooks/runbook-error-budget-fast-burn.md"
