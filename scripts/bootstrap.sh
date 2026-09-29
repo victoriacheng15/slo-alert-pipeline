@@ -55,9 +55,18 @@ helm upgrade --install "${HELM_RELEASE_NAME}" prometheus-community/kube-promethe
   --values "${REPO_ROOT}/manifests/base/values.yaml" \
   --wait --timeout 5m
 
-echo "=== [5/6] Deploying Webhook Sink & Root Alertmanager Routing ==="
+echo "=== [5/6] Deploying Webhook Sink, Root Alertmanager Routing & Dashboards ==="
 kubectl apply -f "${REPO_ROOT}/manifests/base/webhook-sink.yaml"
 kubectl apply -f "${REPO_ROOT}/manifests/base/alertmanager-root-config.yaml"
+if [[ -f "${REPO_ROOT}/dashboards/slo-overview.json" ]]; then
+  echo "Importing Grafana dashboard (slo-overview.json)..."
+  kubectl create configmap grafana-dashboard-slo-overview \
+    --from-file=slo-overview.json="${REPO_ROOT}/dashboards/slo-overview.json" \
+    --namespace="${MONITORING_NS}" \
+    --dry-run=client -o yaml | \
+  kubectl label --local -f - grafana_dashboard="1" app.kubernetes.io/part-of="slo-alert-pipeline" -o yaml | \
+  kubectl apply -f -
+fi
 
 echo "=== [6/6] Applying Core Prometheus Rules ==="
 kubectl apply -f "${REPO_ROOT}/manifests/rules/"

@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: synthetic-traffic-generator
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: traffic-generator
+    app.kubernetes.io/part-of: slo-alert-pipeline
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: synthetic-traffic-generator
+  template:
+    metadata:
+      labels:
+        app: synthetic-traffic-generator
+    spec:
+      containers:
+        - name: traffic-generator
+          image: curlimages/curl:8.10.1
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "Starting continuous synthetic baseline traffic generator..."
+              CHECKOUT_URL="http://checkout-service.tenant-checkout.svc:8080/api/checkout/process"
+              INVENTORY_URL="http://inventory-service.tenant-inventory.svc:8080/api/inventory/items"
+
+              while true; do
+                # Generate concurrent baseline transactions across tenants
+                curl -s -o /dev/null -w "%{http_code}\n" "${CHECKOUT_URL}" || true
+                curl -s -o /dev/null -w "%{http_code}\n" "${INVENTORY_URL}" || true
+                sleep 1
+              done
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000
+            capabilities:
+              drop:
+                - ALL

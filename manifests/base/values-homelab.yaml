@@ -1,0 +1,92 @@
+# Homelab configuration for kube-prometheus-stack
+# Designed for persistent, multi-week SLO evaluation with 35-day metric retention
+
+kubeControllerManager:
+  enabled: false
+
+kubeScheduler:
+  enabled: false
+
+kubeEtcd:
+  enabled: false
+
+kubeProxy:
+  enabled: false
+
+nodeExporter:
+  enabled: true
+
+kubeStateMetrics:
+  enabled: true
+
+prometheus:
+  prometheusSpec:
+    scrapeInterval: 30s
+    evaluationInterval: 30s
+    retention: 35d
+    retentionSize: 45Gi
+    # Cross-namespace CRD discovery
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+    serviceMonitorNamespaceSelector: {}
+    podMonitorNamespaceSelector: {}
+    ruleNamespaceSelector: {}
+    # Persistent storage for historical SLO error budget metrics
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 50Gi
+    resources:
+      requests:
+        memory: 512Mi
+        cpu: 250m
+      limits:
+        memory: 2048Mi
+        cpu: 2000m
+
+alertmanager:
+  alertmanagerSpec:
+    alertmanagerConfiguration:
+      name: alertmanager-root-config
+    alertmanagerConfigMatcherStrategy:
+      type: OnNamespaceExceptForAlertmanagerNamespace
+    alertmanagerConfigSelector: {}
+    alertmanagerConfigNamespaceSelector: {}
+    storage:
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 2Gi
+    resources:
+      requests:
+        memory: 128Mi
+        cpu: 100m
+      limits:
+        memory: 512Mi
+        cpu: 500m
+
+grafana:
+  enabled: true
+  adminPassword: "admin"
+  defaultDashboardsEnabled: false
+  persistence:
+    enabled: true
+    type: pvc
+    size: 5Gi
+    accessModes:
+      - ReadWriteOnce
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: 100m
+    limits:
+      memory: 1024Mi
+      cpu: 1000m
