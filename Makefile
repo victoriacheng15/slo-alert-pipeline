@@ -1,16 +1,46 @@
-.PHONY: help test docker-build docker-run docker-stop docker-logs clean bootstrap port-forward-prometheus port-forward-alertmanager port-forward-grafana logs-webhook-sink teardown
-
 CONTAINER_ENGINE ?= podman
 IMAGE_NAME ?= mock-app:latest
 CONTAINER_NAME ?= mock-app-local
 PORT ?= 8080
 
+.PHONY: help
+
 help: ## Display available make targets
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
-test: ## Run local Go unit tests
+# ==============================================================================
+# Toolchain & Validation
+# ==============================================================================
+.PHONY: tools-install lint-yaml lint-k8s lint test-rules test validate
+
+tools-install: ## Install required CLI tools using mise
+	mise install
+
+lint-yaml: ## Validate YAML formatting and syntax with yamllint
+	@echo "Running yamllint..."
+	mise exec -- yamllint -c .yamllint.yaml manifests tests/promtool
+
+lint-k8s: ## Validate Kubernetes resource schemas with kubeconform
+	@echo "Running kubeconform on manifests..."
+	find manifests/ -name "*.yaml" ! -name "values*.yaml" | xargs mise exec -- kubeconform -summary -ignore-missing-schemas
+
+lint: lint-yaml lint-k8s ## Run all static linters
+
+test-rules: ## Run promtool unit tests against recording and alerting rules
+	@echo "Testing PromQL rules using promtool..."
+	mise exec -- promtool test rules tests/promtool/recording-rules-test.yaml
+	mise exec -- promtool test rules tests/promtool/burn-rates-test.yaml
+
+test: test-rules ## Run Go unit tests and PromQL rule tests
 	@echo "Running unit tests in workloads/mock-app..."
 	(cd workloads/mock-app && go test -v -race ./...)
+
+validate: lint test ## Run complete local validation suite (lint and test)
+
+# ==============================================================================
+# Workload Container Management
+# ==============================================================================
+.PHONY: docker-build docker-run docker-logs docker-stop clean
 
 docker-build: ## Build the mock-app container image
 	@echo "Building container image $(IMAGE_NAME) using $(CONTAINER_ENGINE)..."
@@ -33,6 +63,14 @@ docker-stop: ## Stop the running container
 	@echo "Stopping container $(CONTAINER_NAME)..."
 	-$(CONTAINER_ENGINE) stop $(CONTAINER_NAME)
 
+clean: docker-stop ## Clean up local artifacts and containers
+	@echo "Cleanup completed."
+
+# ==============================================================================
+# Cluster Operations & Observability
+# ==============================================================================
+.PHONY: bootstrap port-forward-prometheus port-forward-alertmanager port-forward-grafana logs-webhook-sink teardown
+
 bootstrap: ## Idempotently provision namespaces, deploy kube-prometheus-stack, and apply base manifests
 	@bash scripts/bootstrap.sh
 
@@ -53,6 +91,3 @@ teardown: ## Remove base observability stack and tenant namespaces
 	-helm uninstall kube-prometheus-stack -n monitoring
 	@echo "Deleting tenant and monitoring namespaces..."
 	-kubectl delete namespace tenant-checkout tenant-inventory monitoring
-
-clean: docker-stop ## Clean up local artifacts and containers
-	@echo "Cleanup completed."
