@@ -1,0 +1,25 @@
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  name: alertmanager-root-config
+  namespace: monitoring
+  labels:
+    alertmanagerConfig: root
+spec:
+  route:
+    groupBy: ['alertname', 'namespace']
+    groupWait: 10s
+    groupInterval: 30s
+    repeatInterval: 4h
+    receiver: 'root-fallback'
+    routes:
+      - receiver: 'root-fallback'
+        matchers:
+          - name: alertname
+            value: ".*"
+            matchType: "=~"
+  receivers:
+    - name: 'root-fallback'
+      webhookConfigs:
+        - url: 'http://webhook-sink.monitoring.svc:8080/alerts'
+          sendResolved: true

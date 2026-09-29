@@ -1,0 +1,114 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: webhook-sink-script
+  namespace: monitoring
+  labels:
+    app: webhook-sink
+data:
+  server.py: |
+    import http.server
+    import json
+    import sys
+
+    class WebhookHandler(http.server.BaseHTTPRequestHandler):
+        def do_POST(self):
+            content_length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(content_length)
+            try:
+                payload = json.loads(body.decode('utf-8'))
+                status = payload.get("status", "unknown")
+                alerts = payload.get("alerts", [])
+                print(f"\n==================== [ALERT WEBHOOK: {status.upper()}] ====================", flush=True)
+                print(f"Receiver: {payload.get('receiver', 'unknown')}", flush=True)
+                print(f"Group Labels: {json.dumps(payload.get('groupLabels', {}))}", flush=True)
+                print(f"Common Labels: {json.dumps(payload.get('commonLabels', {}))}", flush=True)
+                for alert in alerts:
+                    print(f"--- Alert: {alert.get('labels', {}).get('alertname', 'unknown')} ({alert.get('status', 'unknown')}) ---", flush=True)
+                    print(f"    Tenant:      {alert.get('labels', {}).get('tenant', 'none')}", flush=True)
+                    print(f"    Severity:    {alert.get('labels', {}).get('severity', 'none')}", flush=True)
+                    print(f"    Summary:     {alert.get('annotations', {}).get('summary', 'none')}", flush=True)
+                    print(f"    Runbook URL: {alert.get('annotations', {}).get('runbook_url', 'none')}", flush=True)
+                print(f"=================================================================\n", flush=True)
+            except Exception as e:
+                print(f"Error parsing payload: {e}\nRaw: {body.decode('utf-8')}", flush=True)
+
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(b'{"status":"received"}')
+
+        def do_GET(self):
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(b'{"status":"healthy"}')
+
+        def log_message(self, format, *args):
+            # Suppress default access logs to keep alert output clean
+            pass
+
+    if __name__ == '__main__':
+        server = http.server.HTTPServer(('0.0.0.0', 8080), WebhookHandler)
+        print("Webhook sink listening on 0.0.0.0:8080...", flush=True)
+        server.serve_forever()
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: webhook-sink
+  namespace: monitoring
+  labels:
+    app: webhook-sink
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: webhook-sink
+  template:
+    metadata:
+      labels:
+        app: webhook-sink
+    spec:
+      containers:
+        - name: sink
+          image: python:3.11-alpine
+          command: ["python3", "-u", "/app/server.py"]
+          ports:
+            - containerPort: 8080
+              name: http
+          volumeMounts:
+            - name: script-vol
+              mountPath: /app
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      volumes:
+        - name: script-vol
+          configMap:
+            name: webhook-sink-script
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: webhook-sink
+  namespace: monitoring
+  labels:
+    app: webhook-sink
+spec:
+  selector:
+    app: webhook-sink
+  ports:
+    - port: 8080
+      targetPort: http
+      name: http
