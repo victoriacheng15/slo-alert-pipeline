@@ -1,0 +1,24 @@
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  name: checkout-alert-config
+  namespace: tenant-checkout
+  labels:
+    alertmanagerConfig: tenant-checkout
+spec:
+  route:
+    groupBy: ['alertname', 'tenant', 'service']
+    groupWait: 5s
+    groupInterval: 10s
+    repeatInterval: 12h
+    receiver: checkout-receiver
+    routes:
+      - receiver: checkout-receiver
+        matchers:
+          - name: tenant
+            value: tenant-checkout
+  receivers:
+    - name: checkout-receiver
+      webhookConfigs:
+        - url: http://webhook-sink.monitoring.svc:8080/alerts
+          sendResolved: true

@@ -69,19 +69,21 @@ clean: docker-stop ## Clean up local artifacts and containers
 # ==============================================================================
 # Cluster Operations & Observability
 # ==============================================================================
-.PHONY: bootstrap port-forward-prometheus port-forward-alertmanager port-forward-grafana logs-webhook-sink teardown
+.PHONY: bootstrap port-forward logs-webhook-sink teardown
 
 bootstrap: ## Idempotently provision namespaces, deploy kube-prometheus-stack, and apply base manifests
 	@bash scripts/bootstrap.sh
 
-port-forward-prometheus: ## Forward Prometheus UI to localhost:9090
-	kubectl port-forward -n monitoring svc/kube-prometheus-stack-prometheus 9090:9090
-
-port-forward-alertmanager: ## Forward Alertmanager UI to localhost:9093
-	kubectl port-forward -n monitoring svc/kube-prometheus-stack-alertmanager 9093:9093
-
-port-forward-grafana: ## Forward Grafana UI to localhost:3000 (admin/admin)
-	kubectl port-forward -n monitoring svc/kube-prometheus-stack-grafana 3000:80
+port-forward: ## Forward Prometheus (9090), Alertmanager (9093), and Grafana (3000)
+	@echo "Forwarding observability UIs (Press Ctrl+C to stop):"
+	@echo "  - Prometheus:   http://localhost:9090"
+	@echo "  - Alertmanager: http://localhost:9093"
+	@echo "  - Grafana:      http://localhost:3000 (admin/admin)"
+	@bash -c "trap 'kill \$$(jobs -p) 2>/dev/null' EXIT INT TERM; \
+		kubectl port-forward -n monitoring svc/kube-prometheus-stack-prometheus 9090:9090 >/dev/null 2>&1 & \
+		kubectl port-forward -n monitoring svc/kube-prometheus-stack-alertmanager 9093:9093 >/dev/null 2>&1 & \
+		kubectl port-forward -n monitoring svc/kube-prometheus-stack-grafana 3000:80 >/dev/null 2>&1 & \
+		wait"
 
 logs-webhook-sink: ## Follow live incoming alert payloads in the webhook sink
 	kubectl logs -n monitoring -l app=webhook-sink -f
