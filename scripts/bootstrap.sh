@@ -1,13 +1,33 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# SLO Alert Pipeline: Local Cluster Bootstrap Script
+# ==============================================================================
+# bootstrap.sh: Idempotent local cluster bootstrap and base stack provisioning
+# ==============================================================================
+# Flags & Arguments:
+#   None (runs idempotent provisioning against current kubectl context).
+#   -h, --help    Display usage instructions and exit.
+#
+# Environment Overrides:
+#   HELM_RELEASE_NAME   Helm release name (default: "kube-prometheus-stack")
+#   MONITORING_NS       Monitoring namespace (default: "monitoring")
+#   CHECKOUT_NS         Checkout tenant namespace (default: "tenant-checkout")
+#   INVENTORY_NS        Inventory tenant namespace (default: "tenant-inventory")
+#
+# Usage:
+#   bash scripts/bootstrap.sh
+# ==============================================================================
+
+if [[ "${1:-}" =~ ^(-h|--help)$ ]]; then
+  grep '^#' "$0" | cut -c 3-
+  exit 0
+fi
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-HELM_RELEASE_NAME="kube-prometheus-stack"
-MONITORING_NS="monitoring"
-CHECKOUT_NS="tenant-checkout"
-INVENTORY_NS="tenant-inventory"
+HELM_RELEASE_NAME="${HELM_RELEASE_NAME:-kube-prometheus-stack}"
+MONITORING_NS="${MONITORING_NS:-monitoring}"
+CHECKOUT_NS="${CHECKOUT_NS:-tenant-checkout}"
+INVENTORY_NS="${INVENTORY_NS:-tenant-inventory}"
 
 echo "=== [1/6] Preflight Checks ==="
 command -v kubectl >/dev/null 2>&1 || { echo "Error: kubectl is required but not installed." >&2; exit 1; }

@@ -2,44 +2,35 @@
 # ==============================================================================
 # verify-tenants.sh: Automated tenant traffic generator and metrics validator
 # ==============================================================================
+# Flags & Arguments:
+#   None (runs automated end-to-end smoke verification against local cluster).
+#   -h, --help    Display usage instructions and exit.
+#
+# Environment Overrides:
+#   PROMETHEUS_PORT   Local port for Prometheus (default: 9090)
+#   CHECKOUT_PORT     Local port for Checkout service (default: 18081)
+#   INVENTORY_PORT    Local port for Inventory service (default: 18082)
+#
+# Usage:
+#   bash scripts/verify-tenants.sh
+# ==============================================================================
 set -euo pipefail
 
-PROMETHEUS_PORT=9090
-CHECKOUT_PORT=18081
-INVENTORY_PORT=18082
+if [[ "${1:-}" =~ ^(-h|--help)$ ]]; then
+  grep '^#' "$0" | cut -c 3-
+  exit 0
+fi
+
+PROMETHEUS_PORT="${PROMETHEUS_PORT:-9090}"
+CHECKOUT_PORT="${CHECKOUT_PORT:-18081}"
+INVENTORY_PORT="${INVENTORY_PORT:-18082}"
 
 cleanup() {
-  # Kill any background port-forward processes started by this script
-  local pids
-  pids=$(jobs -p 2>/dev/null || true)
-  if [[ -n "${pids}" ]]; then
-    kill ${pids} 2>/dev/null || true
-  fi
+  bash scripts/port-forward.sh stop >/dev/null 2>&1 || true
 }
 trap cleanup EXIT INT TERM
 
-wait_for_port() {
-  local port=$1
-  local retries=15
-  while ! nc -z localhost "${port}" 2>/dev/null && ! (echo > /dev/tcp/localhost/"${port}") 2>/dev/null; do
-    retries=$((retries - 1))
-    if [[ ${retries} -le 0 ]]; then
-      echo "[-] Timed out waiting for localhost:${port}"
-      return 1
-    fi
-    sleep 0.5
-  done
-}
-
-echo "[+] Starting background port-forwards..."
-kubectl port-forward -n monitoring svc/kube-prometheus-stack-prometheus "${PROMETHEUS_PORT}:9090" >/dev/null 2>&1 &
-kubectl port-forward -n tenant-checkout svc/checkout-service "${CHECKOUT_PORT}:8080" >/dev/null 2>&1 &
-kubectl port-forward -n tenant-inventory svc/inventory-service "${INVENTORY_PORT}:8080" >/dev/null 2>&1 &
-
-wait_for_port "${PROMETHEUS_PORT}"
-wait_for_port "${CHECKOUT_PORT}"
-wait_for_port "${INVENTORY_PORT}"
-echo "[+] Port-forwards established."
+bash scripts/port-forward.sh start drill
 
 echo "[+] Sending synthetic traffic to tenants..."
 CHECKOUT_RESP=$(curl -s "http://localhost:${CHECKOUT_PORT}/api/checkout/process")
