@@ -1,0 +1,33 @@
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  name: alerts-inhibition
+  namespace: monitoring
+  labels:
+    alertmanagerConfig: inhibition
+spec:
+  inhibitRules:
+    - targetMatch:
+        - name: alertname
+          value: SLOErrorBudgetFastBurn
+      sourceMatch:
+        - name: alertname
+          value: KubeNodeNotReady
+      equal:
+        - node
+    - targetMatch:
+        - name: alertname
+          value: SLOErrorBudgetFastBurnLocal
+      sourceMatch:
+        - name: alertname
+          value: KubeNodeNotReady
+      equal:
+        - node
+    - targetMatch:
+        - name: alertname
+          value: SLOErrorBudgetSlowBurn
+      sourceMatch:
+        - name: alertname
+          value: KubeNodeNotReady
+      equal:
+        - node

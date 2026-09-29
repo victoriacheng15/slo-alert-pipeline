@@ -1,0 +1,24 @@
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  name: inventory-alert-config
+  namespace: tenant-inventory
+  labels:
+    alertmanagerConfig: tenant-inventory
+spec:
+  route:
+    groupBy: ['alertname', 'tenant', 'service']
+    groupWait: 5s
+    groupInterval: 10s
+    repeatInterval: 12h
+    receiver: inventory-receiver
+    routes:
+      - receiver: inventory-receiver
+        matchers:
+          - name: tenant
+            value: tenant-inventory
+  receivers:
+    - name: inventory-receiver
+      webhookConfigs:
+        - url: http://webhook-sink.monitoring.svc:8080/alerts
+          sendResolved: true

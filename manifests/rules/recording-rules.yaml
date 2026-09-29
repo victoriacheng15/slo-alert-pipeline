@@ -13,38 +13,38 @@ spec:
       rules:
         # Precomputed request rate windows preserving tenant dimensions
         - record: tenant_job:http_requests:rate2m
-          expr: sum by (tenant, namespace, service, job) (rate(http_requests_total[2m]))
+          expr: sum by (tenant, namespace, service, job, node) (rate(http_requests_total[2m]))
 
         - record: tenant_job:http_requests:rate5m
-          expr: sum by (tenant, namespace, service, job) (rate(http_requests_total[5m]))
+          expr: sum by (tenant, namespace, service, job, node) (rate(http_requests_total[5m]))
 
         - record: tenant_job:http_requests:rate15m
-          expr: sum by (tenant, namespace, service, job) (rate(http_requests_total[15m]))
+          expr: sum by (tenant, namespace, service, job, node) (rate(http_requests_total[15m]))
 
         - record: tenant_job:http_requests:rate30m
-          expr: sum by (tenant, namespace, service, job) (rate(http_requests_total[30m]))
+          expr: sum by (tenant, namespace, service, job, node) (rate(http_requests_total[30m]))
 
         - record: tenant_job:http_requests:rate1h
-          expr: sum by (tenant, namespace, service, job) (rate(http_requests_total[1h]))
+          expr: sum by (tenant, namespace, service, job, node) (rate(http_requests_total[1h]))
 
         - record: tenant_job:http_requests:rate6h
-          expr: sum by (tenant, namespace, service, job) (rate(http_requests_total[6h]))
+          expr: sum by (tenant, namespace, service, job, node) (rate(http_requests_total[6h]))
 
         # Precomputed 5xx error rate windows preserving tenant dimensions
         - record: tenant_job:http_requests_errors:rate2m
-          expr: sum by (tenant, namespace, service, job) (rate(http_requests_total{status=~"5.."}[2m]))
+          expr: sum by (tenant, namespace, service, job, node) (rate(http_requests_total{status=~"5.."}[2m]))
 
         - record: tenant_job:http_requests_errors:rate5m
-          expr: sum by (tenant, namespace, service, job) (rate(http_requests_total{status=~"5.."}[5m]))
+          expr: sum by (tenant, namespace, service, job, node) (rate(http_requests_total{status=~"5.."}[5m]))
 
         - record: tenant_job:http_requests_errors:rate15m
-          expr: sum by (tenant, namespace, service, job) (rate(http_requests_total{status=~"5.."}[15m]))
+          expr: sum by (tenant, namespace, service, job, node) (rate(http_requests_total{status=~"5.."}[15m]))
 
         - record: tenant_job:http_requests_errors:rate30m
-          expr: sum by (tenant, namespace, service, job) (rate(http_requests_total{status=~"5.."}[30m]))
+          expr: sum by (tenant, namespace, service, job, node) (rate(http_requests_total{status=~"5.."}[30m]))
 
         - record: tenant_job:http_requests_errors:rate1h
-          expr: sum by (tenant, namespace, service, job) (rate(http_requests_total{status=~"5.."}[1h]))
+          expr: sum by (tenant, namespace, service, job, node) (rate(http_requests_total{status=~"5.."}[1h]))
 
         - record: tenant_job:http_requests_errors:rate6h
-          expr: sum by (tenant, namespace, service, job) (rate(http_requests_total{status=~"5.."}[6h]))
+          expr: sum by (tenant, namespace, service, job, node) (rate(http_requests_total{status=~"5.."}[6h]))

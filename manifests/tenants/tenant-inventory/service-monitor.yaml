@@ -1,0 +1,32 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: inventory-service-monitor
+  namespace: tenant-inventory
+  labels:
+    app: inventory-service
+    service: inventory
+    tenant: tenant-inventory
+    release: kube-prometheus-stack
+spec:
+  selector:
+    matchLabels:
+      app: inventory-service
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 10s
+      scrapeTimeout: 5s
+      relabelings:
+        - sourceLabels: [__meta_kubernetes_pod_node_name]
+          targetLabel: node
+          action: replace
+        - sourceLabels: [__meta_kubernetes_namespace]
+          targetLabel: tenant
+          action: replace
+        - sourceLabels: [__meta_kubernetes_service_name]
+          targetLabel: job
+          action: replace
+        - targetLabel: service
+          replacement: inventory
+          action: replace
