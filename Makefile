@@ -11,20 +11,24 @@ help: ## Display available make targets
 # ==============================================================================
 # Toolchain & Validation
 # ==============================================================================
-.PHONY: tools-install lint-yaml lint-k8s lint test-rules test validate
+.PHONY: tools-install lint-yaml lint-k8s lint-actions lint test-rules test validate
 
 tools-install: ## Install required CLI tools using mise
 	mise install
 
 lint-yaml: ## Validate YAML formatting and syntax with yamllint
 	@echo "Running yamllint..."
-	mise exec -- yamllint -c .yamllint.yaml manifests tests/promtool
+	mise exec -- yamllint -c .yamllint.yaml manifests tests/promtool .github/workflows
 
 lint-k8s: ## Validate Kubernetes resource schemas with kubeconform
 	@echo "Running kubeconform on manifests..."
-	find manifests/ -name "*.yaml" ! -name "values*.yaml" | xargs mise exec -- kubeconform -summary -ignore-missing-schemas
+	find manifests/ -name "*.yaml" ! -name "values*.yaml" -print0 | xargs -0 mise exec -- kubeconform -summary -ignore-missing-schemas
 
-lint: lint-yaml lint-k8s ## Run all static linters
+lint-actions: ## Validate GitHub Actions workflows with actionlint
+	@echo "Running actionlint..."
+	mise exec -- actionlint
+
+lint: lint-yaml lint-k8s lint-actions ## Run all static linters
 
 test-rules: ## Run promtool unit tests against recording and alerting rules
 	@echo "Testing PromQL rules using promtool..."

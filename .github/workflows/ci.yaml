@@ -1,0 +1,150 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.gitignore'
+  pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.gitignore'
+
+permissions:
+  contents: read
+
+jobs:
+  detect-changes:
+    name: Detect Changed Paths
+    runs-on: ubuntu-latest
+    outputs:
+      lint: ${{ steps.filter.outputs.lint }}
+      tests: ${{ steps.filter.outputs.tests }}
+      e2e: ${{ steps.filter.outputs.e2e }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v7
+
+      - name: Evaluate Path Filters
+        uses: dorny/paths-filter@v4
+        id: filter
+        with:
+          filters: |
+            lint:
+              - 'manifests/**'
+              - 'tests/**'
+              - '.github/workflows/**'
+              - '.yamllint.yaml'
+              - '.mise.toml'
+            tests:
+              - 'manifests/rules/**'
+              - 'tests/**'
+              - 'workloads/**'
+            e2e:
+              - 'manifests/**'
+              - 'workloads/**'
+              - 'scripts/**'
+              - 'pyproject.toml'
+              - 'dashboards/**'
+
+  lint:
+    name: Lint & Schema Validation
+    runs-on: ubuntu-latest
+    needs:
+      - detect-changes
+    if: needs.detect-changes.outputs.lint == 'true'
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v7
+
+      - name: Install Toolchain via Mise
+        uses: jdx/mise-action@v5
+
+      - name: Validate YAML Formatting
+        run: mise exec -- yamllint -c .yamllint.yaml manifests tests/promtool .github/workflows
+
+      - name: Validate Kubernetes Manifests with Kubeconform
+        run: find manifests/ -name "*.yaml" ! -name "values*.yaml" -print0 | xargs -0 mise exec -- kubeconform -summary -ignore-missing-schemas
+
+      - name: Validate GitHub Actions Workflows
+        run: mise exec -- actionlint
+
+  test:
+    name: PromQL Rules & Unit Tests
+    runs-on: ubuntu-latest
+    needs:
+      - detect-changes
+    if: needs.detect-changes.outputs.tests == 'true'
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: workloads/mock-app/go.mod
+          check-latest: true
+
+      - name: Install Toolchain via Mise
+        uses: jdx/mise-action@v5
+
+      - name: Run PromQL Rule Tests
+        run: |
+          mise exec -- promtool test rules tests/promtool/recording-rules-test.yaml
+          mise exec -- promtool test rules tests/promtool/burn-rates-test.yaml
+
+      - name: Run Go Unit Tests
+        working-directory: workloads/mock-app
+        run: go test -v -race ./...
+
+  e2e-drill:
+    name: Kind Cluster Verification Drill
+    runs-on: ubuntu-latest
+    needs:
+      - detect-changes
+      - lint
+      - test
+    if: always() && !cancelled() && !contains(needs.*.result, 'failure') && needs.detect-changes.outputs.e2e == 'true'
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v7
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v5
+        with:
+          version: v3.14.0
+
+      - name: Create Ephemeral Kind Cluster
+        uses: helm/kind-action@v1.15.0
+        with:
+          cluster_name: kind
+          wait: 120s
+
+      - name: Build Mock Application Container
+        run: docker build -t localhost/mock-app:latest -t mock-app:latest -f workloads/mock-app/Dockerfile workloads/mock-app
+
+      - name: Load Container Image into Kind
+        run: kind load docker-image localhost/mock-app:latest --name kind
+
+      - name: Bootstrap Observability Stack & Tenants
+        run: |
+          bash scripts/bootstrap.sh
+          kubectl apply -f manifests/tenants/tenant-checkout/
+          kubectl apply -f manifests/tenants/tenant-inventory/
+          kubectl apply -f manifests/rules/alerts-inhibition.yaml
+          kubectl rollout status deployment/checkout-service -n tenant-checkout --timeout=120s
+          kubectl rollout status deployment/inventory-service -n tenant-inventory --timeout=120s
+
+      - name: Set up Python uv
+        uses: astral-sh/setup-uv@v10.2.0
+        with:
+          enable-cache: true
+
+      - name: Execute End-to-End Verification Drill
+        run: uv run scripts/drill-burn-budget.py --profile local

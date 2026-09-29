@@ -63,7 +63,7 @@ alertmanager:
 grafana:
   enabled: true
   adminPassword: "admin"
-  defaultDashboardsEnabled: true
+  defaultDashboardsEnabled: false
   resources:
     requests:
       memory: 128Mi
