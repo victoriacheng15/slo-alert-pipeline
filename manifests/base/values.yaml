@@ -44,6 +44,8 @@ prometheus:
 # Alertmanager configuration
 alertmanager:
   alertmanagerSpec:
+    alertmanagerConfiguration:
+      name: alertmanager-root-config
     alertmanagerConfigMatcherStrategy:
       type: OnNamespaceExceptForAlertmanagerNamespace
     # Discover tenant-level AlertmanagerConfig resources across all namespaces
