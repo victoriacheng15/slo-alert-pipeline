@@ -1,4 +1,4 @@
-.PHONY: help test docker-build docker-run docker-stop docker-logs clean
+.PHONY: help test docker-build docker-run docker-stop docker-logs clean bootstrap port-forward-prometheus port-forward-alertmanager port-forward-grafana logs-webhook-sink teardown
 
 CONTAINER_ENGINE ?= podman
 IMAGE_NAME ?= mock-app:latest
@@ -32,6 +32,27 @@ docker-logs: ## Follow logs of the running container
 docker-stop: ## Stop the running container
 	@echo "Stopping container $(CONTAINER_NAME)..."
 	-$(CONTAINER_ENGINE) stop $(CONTAINER_NAME)
+
+bootstrap: ## Idempotently provision namespaces, deploy kube-prometheus-stack, and apply base manifests
+	@bash scripts/bootstrap.sh
+
+port-forward-prometheus: ## Forward Prometheus UI to localhost:9090
+	kubectl port-forward -n monitoring svc/kube-prometheus-stack-prometheus 9090:9090
+
+port-forward-alertmanager: ## Forward Alertmanager UI to localhost:9093
+	kubectl port-forward -n monitoring svc/kube-prometheus-stack-alertmanager 9093:9093
+
+port-forward-grafana: ## Forward Grafana UI to localhost:3000 (admin/admin)
+	kubectl port-forward -n monitoring svc/kube-prometheus-stack-grafana 3000:80
+
+logs-webhook-sink: ## Follow live incoming alert payloads in the webhook sink
+	kubectl logs -n monitoring -l app=webhook-sink -f
+
+teardown: ## Remove base observability stack and tenant namespaces
+	@echo "Uninstalling kube-prometheus-stack..."
+	-helm uninstall kube-prometheus-stack -n monitoring
+	@echo "Deleting tenant and monitoring namespaces..."
+	-kubectl delete namespace tenant-checkout tenant-inventory monitoring
 
 clean: docker-stop ## Clean up local artifacts and containers
 	@echo "Cleanup completed."
