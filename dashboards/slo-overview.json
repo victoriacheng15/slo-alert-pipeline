@@ -512,7 +512,7 @@
       },
       "gridPos": {
         "h": 9,
-        "w": 16,
+        "w": 12,
         "x": 0,
         "y": 17
       },
@@ -599,11 +599,41 @@
       },
       "gridPos": {
         "h": 9,
-        "w": 8,
-        "x": 16,
+        "w": 12,
+        "x": 12,
         "y": 17
       },
       "id": 11,
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "alertname",
+                "tenant",
+                "severity",
+                "alertstate",
+                "node"
+              ]
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
+            "indexByName": {
+              "alertname": 0,
+              "tenant": 1,
+              "severity": 2,
+              "alertstate": 3,
+              "node": 4
+            },
+            "renameByName": {}
+          }
+        }
+      ],
       "options": {
         "cellHeight": "sm",
         "footer": {

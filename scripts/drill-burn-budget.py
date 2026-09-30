@@ -346,11 +346,16 @@ async def main_async() -> int:
     parser.add_argument("--checkout-url", default="http://localhost:18081", help="Checkout service endpoint")
     parser.add_argument("--inventory-url", default="http://localhost:18082", help="Inventory service endpoint")
     parser.add_argument("--skip-port-forward", action="store_true", help="Skip automatic port-forwarding")
+    parser.add_argument(
+        "--teardown-port-forward",
+        action="store_true",
+        help="Tear down background port-forwards upon completion (default: keep alive)",
+    )
     args = parser.parse_args()
 
     if not args.skip_port_forward:
         console.log("[cyan]Configuring background port-forwards via scripts/port-forward.sh...[/cyan]")
-        PortForwardManager.start("drill")
+        PortForwardManager.start("all")
 
     engine = DrillEngine(
         profile=args.profile,
@@ -370,7 +375,7 @@ async def main_async() -> int:
         return 0 if passed else 1
     finally:
         await engine.close()
-        if not args.skip_port_forward:
+        if args.teardown_port_forward:
             console.log("[cyan]Tearing down port-forwards...[/cyan]")
             PortForwardManager.stop()
 
