@@ -95,6 +95,7 @@ start_targets() {
       echo "[+] Starting Drill port-forwards (Observability + Tenants)..."
       forward_port "monitoring" "svc/kube-prometheus-stack-prometheus" 9090 9090 "Prometheus"
       forward_port "monitoring" "svc/kube-prometheus-stack-alertmanager" 9093 9093 "Alertmanager"
+      forward_port "monitoring" "svc/kube-prometheus-stack-grafana" 3000 80 "Grafana"
       forward_port "tenant-checkout" "svc/checkout-service" 18081 8080 "Checkout Service"
       forward_port "tenant-inventory" "svc/inventory-service" 18082 8080 "Inventory Service"
       ;;
