@@ -58,7 +58,7 @@ groups:
         annotations:
           summary: "Critical error budget fast burn detected on tenant {{ $labels.tenant }}"
           description: "Tenant {{ $labels.tenant }} (service {{ $labels.service }}) is burning error budget at rate > 14.4x."
-          runbook_url: "docs/runbooks/runbook-error-budget-fast-burn.md"
+          doc_url: "docs/troubleshooting.md"
 
       - alert: SLOErrorBudgetSlowBurn
         expr: |
@@ -77,7 +77,7 @@ groups:
         annotations:
           summary: "Warning: Sustained error budget slow burn detected on tenant {{ $labels.tenant }}"
           description: "Tenant {{ $labels.tenant }} (service {{ $labels.service }}) is burning error budget at rate > 6x."
-          runbook_url: "docs/runbooks/runbook-error-budget-slow-burn.md"
+          doc_url: "docs/troubleshooting.md"
 
       - alert: SLOErrorBudgetFastBurnLocal
         expr: |
@@ -97,4 +97,4 @@ groups:
         annotations:
           summary: "Local Drill: Fast burn detected on tenant {{ $labels.tenant }}"
           description: "Tenant {{ $labels.tenant }} is consuming budget at >14.4x rate across compressed 2m/15m drill windows."
-          runbook_url: "docs/runbooks/runbook-error-budget-fast-burn.md"
+          doc_url: "docs/troubleshooting.md"
