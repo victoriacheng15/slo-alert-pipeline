@@ -28,7 +28,7 @@ data:
                     print(f"    Tenant:      {alert.get('labels', {}).get('tenant', 'none')}", flush=True)
                     print(f"    Severity:    {alert.get('labels', {}).get('severity', 'none')}", flush=True)
                     print(f"    Summary:     {alert.get('annotations', {}).get('summary', 'none')}", flush=True)
-                    print(f"    Runbook URL: {alert.get('annotations', {}).get('runbook_url', 'none')}", flush=True)
+                    print(f"    Doc URL:     {alert.get('annotations', {}).get('doc_url', alert.get('annotations', {}).get('runbook_url', 'none'))}", flush=True)
                 print(f"=================================================================\n", flush=True)
             except Exception as e:
                 print(f"Error parsing payload: {e}\nRaw: {body.decode('utf-8')}", flush=True)

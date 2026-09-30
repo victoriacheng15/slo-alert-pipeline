@@ -40,4 +40,4 @@ tests:
             exp_annotations:
               summary: "Local Drill: Fast burn detected on tenant checkout"
               description: "Tenant checkout is consuming budget at >14.4x rate across compressed 2m/15m drill windows."
-              runbook_url: "docs/runbooks/runbook-error-budget-fast-burn.md"
+              doc_url: "docs/troubleshooting.md"

@@ -30,9 +30,9 @@ spec:
           annotations:
             summary: "Critical error budget fast burn detected on tenant {{ $labels.tenant }}"
             description: "Tenant {{ $labels.tenant }} (service {{ $labels.service }}) is burning error budget at rate > 14.4x (5m and 1h windows > 7.2% error rate)."
-            runbook_url: "docs/runbooks/runbook-error-budget-fast-burn.md"
+            doc_url: "docs/troubleshooting.md"
 
-        # Slow Burn Alert (Production / Homelab Profile: 30m / 6h)
+        # Slow Burn Alert (Homelab Profile: 30m / 6h)
         # Consumes 5% of budget in 6 hours (6x burn rate, error rate > 3.0% for 99.5% SLO)
         - alert: SLOErrorBudgetSlowBurn
           expr: |
@@ -51,7 +51,7 @@ spec:
           annotations:
             summary: "Warning: Sustained error budget slow burn detected on tenant {{ $labels.tenant }}"
             description: "Tenant {{ $labels.tenant }} (service {{ $labels.service }}) is burning error budget at rate > 6x (30m and 6h windows > 3.0% error rate)."
-            runbook_url: "docs/runbooks/runbook-error-budget-slow-burn.md"
+            doc_url: "docs/troubleshooting.md"
 
         # Local Drill Profile (Compressed: 2m / 15m)
         # Accelerates local test cycles without waiting hours for long lookback windows
@@ -73,4 +73,4 @@ spec:
           annotations:
             summary: "Local Drill: Fast burn detected on tenant {{ $labels.tenant }}"
             description: "Tenant {{ $labels.tenant }} is consuming budget at >14.4x rate across compressed 2m/15m drill windows."
-            runbook_url: "docs/runbooks/runbook-error-budget-fast-burn.md"
+            doc_url: "docs/troubleshooting.md"
