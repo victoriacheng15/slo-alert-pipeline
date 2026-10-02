@@ -2,6 +2,8 @@
 
 An observability and alerting pipeline for Kubernetes running on local clusters (such as k3s or kind). It demonstrates multi-window multi-burn-rate alerting for a 99.5% SLO, routes alerts independently per tenant namespace, suppresses cascade noise during node outages using topology-aware inhibition, and provides a Python-based synthetic chaos drill to verify the entire alerting lifecycle.
 
+Watch the end-to-end demo (~2 min video) on [YouTube](https://youtu.be/1k9--DcH4TM?si=nuh6p4yLwU-une1B).
+
 ---
 
 ## Architectural Overview
